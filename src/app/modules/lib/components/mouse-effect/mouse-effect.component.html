@@ -1,0 +1,5 @@
+<div id="page"></div>
+
+<ul *ngIf="isDropdownVisible" class="dropdown-menu" [style.top.px]="dropdownY" [style.left.px]="dropdownX">
+    <li *ngFor="let item of listMouseEffect" (click)="changeMouseEffect(item.effect)">{{item.name}}</li>
+</ul>
