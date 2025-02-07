@@ -37,6 +37,7 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
   speed = 0.8;// tốc độ chuyển động chung
 
   ngOnInit(): void {
+    // khởi tạo ngẫu nhiên các đối tượng
     this.objectList = Array(this.randomInt(5, 10)).fill(0).map((_, i) => {
       const temp = this.randomInt(10, 30);
       return {
@@ -55,7 +56,6 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
         holdOffsetY: 0,
       }
     });
-    console.log(this.objectList);
   }
 
   ngAfterViewInit(): void {
@@ -71,6 +71,7 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
   }
 
+  // vòng lặp chính của trương trình
   loop() {
     this.move();
     this.checkCollision();
@@ -79,6 +80,7 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
     requestAnimationFrame(() => this.loop());
   }
 
+  // xử lý vật thể di chuyển
   move() {
     for (let i = 0; i < this.objectList.length; i += 1) {
       const object = this.objectList[i];
@@ -93,6 +95,7 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // kiểm tra vật thể chạm vào biên giới
   checkBorder() {
     for (let i = 0; i < this.objectList.length; i += 1) {
       const object = this.objectList[i];
@@ -123,6 +126,7 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // vẽ các vật thể
   draw() {
     this.ctx.clearRect(0, 0, this.cv.width, this.cv.height);
     for (let i = 0; i < this.objectList.length; i += 1) {
@@ -135,7 +139,9 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // xử lý sự kiện 
   onEvent() {
+    // kéo thả đối tượng bằng chuột
     const mapEvent = (event: any) => ({
       x: event.offsetX,
       y: event.offsetY,
@@ -172,8 +178,12 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
           }
         });
       }
-    });
+    })
+
+    // thay đổi kích thước màn hình
     window.addEventListener('resize', () => this.onWindowResize());
+
+    // sự kiện bàn phím
     document.addEventListener("keydown", (e) => {
       switch (e.key) {
         case "ArrowLeft":
@@ -193,6 +203,7 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
     })
   }
 
+  // thay đổi kích thước canvas theo kích thước màn hình
   onWindowResize() {
     if (this.cv) {
       const rect = this.cv.getBoundingClientRect();
@@ -201,6 +212,7 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  // kiểm tra sự va chạm giữa các đối tượng
   checkCollision() {
     for (let i = 0; i < this.objectList.length - 1; i += 1) {
       for (let j = i + 1; j < this.objectList.length; j += 1) {
