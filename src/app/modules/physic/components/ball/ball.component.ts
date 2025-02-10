@@ -133,7 +133,13 @@ export class BallComponent implements OnInit, AfterViewInit, OnDestroy {
       const object = this.objectList[i];
       this.ctx.beginPath();
       this.ctx.arc(object.posX, object.posY, object.radius, 0, Math.PI * 2);
-      this.ctx.fillStyle = object.color;
+      const gradient = this.ctx.createRadialGradient(
+        object.posX +  object.radius / 2, object.posY +  object.radius / 2, 0, 
+        object.posX +  object.radius / 2, object.posY +  object.radius / 2, object.radius * 3
+      );
+      gradient.addColorStop(0, object.color);   // Màu ở tâm
+      gradient.addColorStop(1, "black");  // Màu ở rìa  
+      this.ctx.fillStyle = gradient;
       this.ctx.fill();
       this.ctx.closePath();
     }
