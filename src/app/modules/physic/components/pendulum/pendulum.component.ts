@@ -34,6 +34,8 @@ export class PendulumComponent {
   g = -0.3;// gia tốc trọng trường
   isBounce: boolean = true;
   speed = 0.8;// tốc độ chuyển động chung
+  fulcrumX: number = 500;
+  fulcrumY: number = 400;
 
   ngOnInit(): void {
   }
@@ -49,12 +51,12 @@ export class PendulumComponent {
       radius: 20,
       color: 'rgb(23, 99, 221)',
       mass: 100,
-      posX: 200,
-      posY: 200,
+      posX: 300,
+      posY: 400,
       velocityX: 0,
       velocityY: 0,
       accelerationX: 0,
-      accelerationY: 0,
+      accelerationY: this.g,
       isBeingHeld: false,
       holdOffsetX: 0,
       holdOffsetY: 0,
@@ -70,6 +72,7 @@ export class PendulumComponent {
 
   // vòng lặp chính của trương trình
   loop() {
+    this.physic();
     this.move();
     this.checkBorder();
     this.draw();
@@ -81,8 +84,6 @@ export class PendulumComponent {
     for (let i = 0; i < this.objectList.length; i += 1) {
       const object = this.objectList[i];
       if (!object.isBeingHeld) {
-        object.accelerationX = 0;
-        object.accelerationY = this.g;
         object.velocityX += object.accelerationX * this.speed;
         object.velocityY += object.accelerationY * this.speed;
         object.posX += object.velocityX * this.speed;
@@ -157,5 +158,17 @@ export class PendulumComponent {
 
   randomInt(min: number, max: number) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  physic() {
+    for (let i = 0; i < this.objectList.length; i += 1) {
+      const object = this.objectList[i];
+      const distance = Math.sqrt((object.posX - this.fulcrumX) ** 2 + (object.posY - this.fulcrumY) ** 2);
+      const velocity = Math.sqrt(object.velocityX ** 2 + object.velocityY ** 2);
+      const cos = (object.posY - this.fulcrumY) / distance;
+      const sin = (object.posX - this.fulcrumX) / distance;
+      object.accelerationX = - this.g * sin * cos - velocity ** 2 / distance * sin;
+      object.accelerationY = this.g * sin * sin - velocity ** 2 / distance * cos;
+    }
   }
 }
