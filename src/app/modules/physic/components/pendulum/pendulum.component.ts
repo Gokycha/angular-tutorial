@@ -1,4 +1,7 @@
 import { Component, ElementRef, ViewChild } from '@angular/core';
+import { fromEvent, map, pairwise, takeLast, takeUntil, tap } from 'rxjs';
+
+
 
 @Component({
   selector: 'app-pendulum',
@@ -16,6 +19,7 @@ export class PendulumComponent {
     name: string, // Tên hiển thị
     radius: number, // Bán kính
     color: string, // Màu sắc
+    isMoving: boolean, // có chuyển động hay không
 
     // Chuyển động
     mass: number, // Khối lượng
@@ -30,12 +34,13 @@ export class PendulumComponent {
     isBeingHeld?: boolean, // Đang bị giữ?
     holdOffsetX?: number, // Khoảng cách giữ theo X
     holdOffsetY?: number, // Khoảng cách giữ theo Y
+
+    // kết nối đến các vật thể khác
+    connection: Set<number>,
   }[] = [];
   g = -0.3;// gia tốc trọng trường
   isBounce: boolean = true;
   speed = 0.8;// tốc độ chuyển động chung
-  fulcrumX: number = 500;
-  fulcrumY: number = 400;
 
   ngOnInit(): void {
   }
@@ -46,21 +51,42 @@ export class PendulumComponent {
     this.ctx = this.canvas.nativeElement.getContext('2d')!;
 
     // khởi tạo ngẫu nhiên các đối tượng
-    this.objectList.push({
-      name: `object 1`,
-      radius: 20,
-      color: 'rgb(23, 99, 221)',
-      mass: 100,
-      posX: 300,
-      posY: 400,
-      velocityX: 0,
-      velocityY: 0,
-      accelerationX: 0,
-      accelerationY: this.g,
-      isBeingHeld: false,
-      holdOffsetX: 0,
-      holdOffsetY: 0,
-    });
+    this.objectList = [
+      {
+        name: `fulcrum`,
+        radius: 5,
+        color: 'rgb(6, 12, 22)',
+        isMoving: false,
+        mass: 100,
+        posX: 500,
+        posY: 400,
+        velocityX: 0,
+        velocityY: 0,
+        accelerationX: 0,
+        accelerationY: 0,
+        isBeingHeld: false,
+        holdOffsetX: 0,
+        holdOffsetY: 0,
+        connection: new Set([1]),
+      },
+      {
+        name: `pendulum`,
+        radius: 20,
+        color: 'rgb(23, 99, 221)',
+        isMoving: true,
+        mass: 100,
+        posX: 300,
+        posY: 400,
+        velocityX: 0,
+        velocityY: 0,
+        accelerationX: 0,
+        accelerationY: this.g,
+        isBeingHeld: false,
+        holdOffsetX: 0,
+        holdOffsetY: 0,
+        connection: new Set([0]),
+      },
+    ];
 
     //
     this.onEvent();
@@ -74,6 +100,7 @@ export class PendulumComponent {
   loop() {
     this.physic();
     this.move();
+    this.checkCollision();
     this.checkBorder();
     this.draw();
     requestAnimationFrame(() => this.loop());
@@ -83,7 +110,7 @@ export class PendulumComponent {
   move() {
     for (let i = 0; i < this.objectList.length; i += 1) {
       const object = this.objectList[i];
-      if (!object.isBeingHeld) {
+      if (!object.isBeingHeld && object.isMoving) {
         object.velocityX += object.accelerationX * this.speed;
         object.velocityY += object.accelerationY * this.speed;
         object.posX += object.velocityX * this.speed;
@@ -126,13 +153,30 @@ export class PendulumComponent {
   // vẽ các vật thể
   draw() {
     this.ctx.clearRect(0, 0, this.cv.width, this.cv.height);
+    // Vẽ sợi dây kết nối
+    for (let i = 0; i < this.objectList.length; i += 1) {
+      const object = this.objectList[i];
+      for (let j of object.connection) {
+        if (j > i) {
+          const object2 = this.objectList[j];
+          this.ctx.beginPath();
+          this.ctx.moveTo(object2.posX, object2.posY);
+          this.ctx.lineTo(object.posX, object.posY);
+          this.ctx.strokeStyle = "rgb(114, 99, 0)";
+          this.ctx.lineWidth = 2;
+          this.ctx.stroke();
+        }
+      }
+    }
+
+    // vẽ object
     for (let i = 0; i < this.objectList.length; i += 1) {
       const object = this.objectList[i];
       this.ctx.beginPath();
       this.ctx.arc(object.posX, object.posY, object.radius, 0, Math.PI * 2);
       const gradient = this.ctx.createRadialGradient(
-        object.posX +  object.radius / 2, object.posY +  object.radius / 2, 0, 
-        object.posX +  object.radius / 2, object.posY +  object.radius / 2, object.radius * 3
+        object.posX + object.radius / 2, object.posY + object.radius / 2, 0,
+        object.posX + object.radius / 2, object.posY + object.radius / 2, object.radius * 3
       );
       gradient.addColorStop(0, object.color);   // Màu ở tâm
       gradient.addColorStop(1, "black");  // Màu ở rìa  
@@ -142,9 +186,76 @@ export class PendulumComponent {
     }
   }
 
+  // xử lý sự kiện 
   onEvent() {
+    // kéo thả đối tượng bằng chuột
+    const mapEvent = (event: any) => ({
+      x: event.offsetX,
+      y: event.offsetY,
+      time: Date.now(),
+    });
+    const mousedown$ = fromEvent(this.cv, "mousedown").pipe(map(mapEvent));
+    const mousemove$ = fromEvent(this.cv, "mousemove").pipe(map(mapEvent));
+    const mouseup$ = fromEvent(this.cv, "mouseup").pipe(map(mapEvent));
+    mousedown$.subscribe((event: any) => {
+      // console.log(event, this.x, this.y);
+      const heldObject = this.objectList.find((object) => (event.x - object.posX) ** 2 + (event.y - object.posY) ** 2 <= object.radius ** 2);
+      if (heldObject) {
+        heldObject.isBeingHeld = true;
+        heldObject.holdOffsetX = heldObject.posX - event.x;
+        heldObject.holdOffsetY = heldObject.posY - event.y;
+        // console.log(event);
+        mousemove$.pipe(
+          tap((e) => {
+            heldObject.posX = e.x + heldObject.holdOffsetX;
+            heldObject.posY = e.y + heldObject.holdOffsetY;
+          }),
+          takeUntil(mouseup$),
+          takeLast(2),
+          pairwise(),
+          tap(([p1, p2]) => {
+            if (heldObject.isBeingHeld) {
+              const newVelocityX = (p2.x - p1.x) / (p2.time - p1.time);
+              const newVelocityY = (p2.y - p1.y) / (p2.time - p1.time);
+              heldObject.accelerationX = (newVelocityX - heldObject.velocityX) / (p2.time - p1.time);
+              heldObject.accelerationY = (newVelocityY - heldObject.velocityY) / (p2.time - p1.time);
+              heldObject.velocityX = newVelocityX;
+              heldObject.velocityY = newVelocityY;
+              // console.log([p1, p2]);
+            }
+          }),
+        ).subscribe(([p1, p2]) => {
+          if (heldObject.isBeingHeld) {
+            heldObject.isBeingHeld = false;
+            // console.log(points);
+            heldObject.accelerationX = 0;
+            heldObject.accelerationY = 0;
+          }
+        });
+      }
+    })
+
     // thay đổi kích thước màn hình
     window.addEventListener('resize', () => this.onWindowResize());
+
+    // sự kiện bàn phím
+    document.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "ArrowLeft":
+          if (this.speed >= 0.1) {
+            this.speed -= 0.1;
+            console.log("speed: ", this.speed);
+          }
+          break;
+        case "ArrowRight":
+          if (this.speed <= 4.9) {
+            this.speed += 0.1;
+            console.log("speed: ", this.speed);
+          }
+          break;
+        default:
+      }
+    })
   }
 
   // thay đổi kích thước canvas theo kích thước màn hình
@@ -163,12 +274,63 @@ export class PendulumComponent {
   physic() {
     for (let i = 0; i < this.objectList.length; i += 1) {
       const object = this.objectList[i];
-      const distance = Math.sqrt((object.posX - this.fulcrumX) ** 2 + (object.posY - this.fulcrumY) ** 2);
-      const velocity = Math.sqrt(object.velocityX ** 2 + object.velocityY ** 2);
-      const cos = (object.posY - this.fulcrumY) / distance;
-      const sin = (object.posX - this.fulcrumX) / distance;
-      object.accelerationX = - this.g * sin * cos - velocity ** 2 / distance * sin;
-      object.accelerationY = this.g * sin * sin - velocity ** 2 / distance * cos;
+      if (object.isMoving) {
+        object.accelerationX = 0;
+        object.accelerationY = 0;
+        for (let j of object.connection) {
+          const object2 = this.objectList[j];
+          const distance = Math.sqrt((object.posX - object2.posX) ** 2 + (object.posY - object2.posY) ** 2);
+          const velocity = Math.sqrt(object.velocityX ** 2 + object.velocityY ** 2);
+          const cos = (object.posY - object2.posY) / distance;
+          const sin = (object.posX - object2.posX) / distance;
+          object.accelerationX += - this.g * sin * cos - velocity ** 2 / distance * sin + object2.accelerationX;
+          object.accelerationY += this.g * sin * sin - velocity ** 2 / distance * cos + object2.accelerationY;
+          console.log(j, object2.accelerationX, object2.accelerationY);
+        }
+      }
+    }
+  }
+
+  // kiểm tra sự va chạm giữa các đối tượng
+  checkCollision() {
+    for (let i = 0; i < this.objectList.length - 1; i += 1) {
+      for (let j = i + 1; j < this.objectList.length; j += 1) {
+        const objA = this.objectList[i];
+        const objB = this.objectList[j];
+        let dx = objB.posX - objA.posX;
+        let dy = objB.posY - objA.posY;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Kiểm tra xem có va chạm không
+        if (distance <= objA.radius + objB.radius) {
+          // Véc-tơ đơn vị hướng va chạm
+          let nx = dx / distance;
+          let ny = dy / distance;
+
+          // Tính hiệu vận tốc
+          let vxDiff = objA.velocityX - objB.velocityX;
+          let vyDiff = objA.velocityY - objB.velocityY;
+
+          // Nếu hai vật thể đang di chuyển rời xa nhau, bỏ qua va chạm
+          if (vxDiff * nx + vyDiff * ny < 0) return;
+
+          // Tính toán vận tốc sau va chạm theo bảo toàn động lượng
+          let p = (2 * (objA.velocityX * nx + objA.velocityY * ny - objB.velocityX * nx - objB.velocityY * ny)) /
+            (objA.mass + objB.mass);
+
+          objA.velocityX -= p * objB.mass * nx;
+          objA.velocityY -= p * objB.mass * ny;
+          objB.velocityX += p * objA.mass * nx;
+          objB.velocityY += p * objA.mass * ny;
+
+          // Đẩy vật thể ra khỏi nhau để tránh bị dính
+          let overlap = objA.radius + objB.radius - distance;
+          objA.posX -= (overlap / 2) * nx;
+          objA.posY -= (overlap / 2) * ny;
+          objB.posX += (overlap / 2) * nx;
+          objB.posY += (overlap / 2) * ny;
+        }
+      }
     }
   }
 }
