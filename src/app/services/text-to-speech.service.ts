@@ -31,16 +31,16 @@ export class TextToSpeechService {
     }
 
     public getLanguageList() {
-        return this.voices.map(v => v.lang);
+        return this.voices.map(v => v.name);
     }
 
     public changeLanguage(lang: string) {
-        const voice = this.voices.find(v => v.lang == lang);
-        // if (!voice) {
-        //     console.error('Không hỗ trợ ' + lang);
-        //     alert('Không hỗ trợ ' + lang);
-        //     return;
-        // }
+        const voice = this.voices.find(v => v.name == lang);
+        if (!voice) {
+            console.error('Không hỗ trợ ' + lang);
+            alert('Không hỗ trợ ' + lang);
+            return;
+        }
         this.voice = voice!;
     }
 

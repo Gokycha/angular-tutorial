@@ -1,3 +1,6 @@
 <h3>TEXT TO SPEECH</h3>
+<select [(ngModel)]="lang" (ngModelChange)="onLangChange($event)">
+    <option *ngFor="let lang of langs" [value]="lang" [label]="lang"></option>
+</select>
 <input [(ngModel)]="text" type="text"/>
 <button (click)="onSpeak()">Speak</button>

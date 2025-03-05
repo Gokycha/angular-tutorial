@@ -10,6 +10,8 @@ import { TextToSpeechService } from '../../../../services/text-to-speech.service
 })
 export class TextToSpeechComponent implements AfterViewInit {
   text: string = "";
+  lang: string = '';
+  langs: string[] = [];
 
   constructor(
     private textToSpeechService: TextToSpeechService,
@@ -17,7 +19,7 @@ export class TextToSpeechComponent implements AfterViewInit {
 
   ngAfterViewInit(): void {
     this.textToSpeechService.onLoad = () => {
-      console.log(this.textToSpeechService.getLanguageList());
+      this.langs = this.textToSpeechService.getLanguageList();
       this.textToSpeechService.changeLanguage("vi-VN");
       this.textToSpeechService.changeSpeed(0.5);
       this.textToSpeechService.speak("1");
@@ -26,5 +28,10 @@ export class TextToSpeechComponent implements AfterViewInit {
 
   onSpeak() {
     this.textToSpeechService.speak(this.text);
+  }
+
+  onLangChange(lang: string) {
+    console.log(lang);
+    this.textToSpeechService.changeLanguage(lang);
   }
 }
