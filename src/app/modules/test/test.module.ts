@@ -6,18 +6,24 @@ import { ComponentBComponent } from './components/component-b/component-b.compon
 import { TwoWayBindingComponent } from './components/two-way-binding/two-way-binding.component';
 import { FormsModule } from '@angular/forms';
 import { SendDataService } from '../../services/send-data.service';
+import { TextToSpeechService } from '../../services/text-to-speech.service';
+import { TextToSpeechComponent } from './components/text-to-speech/text-to-speech.component';
 
 @NgModule({
   declarations: [
     ComponentAComponent,
     ComponentBComponent,
     TwoWayBindingComponent,
+    TextToSpeechComponent,
   ],
   imports: [
     FormsModule,
     TestRoutingModule,
     CommonModule
   ],
-  providers: [SendDataService],
+  providers: [
+    SendDataService,
+    TextToSpeechService,
+  ],
 })
 export class TestModule { }
