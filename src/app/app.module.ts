@@ -5,6 +5,11 @@ import { AppComponent } from './app.component';
 import { ServiceWorkerModule } from '@angular/service-worker';
 import { FormsModule } from '@angular/forms'; // Import FormsModule
 import { SendDataService } from './services/send-data.service';
+import { NzIconModule } from 'ng-zorro-antd/icon';
+import { IconDefinition } from '@ant-design/icons-angular';
+import * as AllIcons from '@ant-design/icons-angular/icons';
+
+const antDesignIcons = Object.values(AllIcons) as IconDefinition[];
 
 @NgModule({
   declarations: [
@@ -14,6 +19,7 @@ import { SendDataService } from './services/send-data.service';
     BrowserModule,
     FormsModule,
     AppRoutingModule,
+    NzIconModule.forRoot(antDesignIcons),
     ServiceWorkerModule.register('ngsw-worker.js', {
       enabled: !isDevMode(),
       registrationStrategy: 'registerWhenStable:30000'
